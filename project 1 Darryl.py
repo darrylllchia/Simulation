@@ -14,6 +14,7 @@ earnings = [] # earnings for each driver
 number_of_pickups = [] # number of pickups per driver
 driver_work_time = [] # total driving time for each driver (initial location to rider + rider to destination)
 driver_total_time = [] # total working hours of each driver
+shift_end_times = [] # time when drivers end their shift
 current_driver_id = 1
 # time when drivers start their shift
 driver_online_queue = [(current_driver_id, md.generate_random('exp',3), md.generate_location())] # (id,time,location)
@@ -26,13 +27,14 @@ driver_offline = [] # (id,time)
 current_rider_id = 1
 # time when riders request a ride
 ride_requested = [(current_rider_id, md.generate_random('exp',30), md.generate_location(), md.generate_location())] # (id,time,origin, destination)
-rider_waiting_time.append(0)
+#rider_waiting_time.append(0)
 # time when riders run out of patience and cancel a ride
 rider_offline = [] # (id,time)
 riders_waiting = {} # id:(location, destination)
 # matched rides
 ride_complete = [] # (id, end time, origin, destination, driver)
-T = 3 # Set termination time (by the minute)
+ride_info = []
+T = 10 # Set termination time (by the minute)
 t = 0 # Current time (minute 0)
 
 while t < T:
@@ -50,13 +52,16 @@ while t < T:
         off = md.generate_random('unif',3) + 5
         new_off = (current_driver_id, t + off)
         driver_total_time.append(off)
+        shift_end_times.append(t + off)
         driver_offline = md.add_to_list(new_off, driver_offline)
         # look for riders
         rider = md.find_closest_available(driver_online_queue[0][2], riders_waiting)
         # rider found
         if rider:
             number_of_pickups[current_driver_id - 1] += 1
-            earnings[current_driver_id - 1] -= md.calculate_petrol(driver_online_queue[0][2], riders_waiting[rider][0])
+            potential_profit = md.calculate_trip(riders_waiting[rider][0],riders_waiting[rider][1]) - md.calculate_petrol(driver_online_queue[0][2], riders_waiting[rider][0])
+            earnings[current_driver_id - 1] += potential_profit
+            # earnings[current_driver_id - 1] -= md.calculate_petrol(driver_online_queue[0][2], riders_waiting[rider][0])
             # generate time taken to travel to rider
             time_to_rider = md.generate_trip_time(driver_online_queue[0][2], riders_waiting[rider][0])
             ride_start = t + time_to_rider
@@ -93,7 +98,9 @@ while t < T:
         driver = md.find_closest_available(ride_requested[0][2], drivers_available)
         if driver:
             number_of_pickups[driver - 1] += 1
-            earnings[driver - 1] -= md.calculate_petrol(drivers_available[driver][0], ride_requested[0][2])
+            potential_profit = md.calculate_trip(ride_requested[0][2], ride_requested[0][3]) - md.calculate_petrol(drivers_available[driver][0], ride_requested[0][2])
+            earnings[driver - 1] += potential_profit
+            # earnings[driver - 1] -= md.calculate_petrol(drivers_available[driver][0], ride_requested[0][2])
             # driver found immediately, generate time taken to travel to rider
             time_to_rider = md.generate_trip_time(drivers_available[driver][0], ride_requested[0][2])
             ride_start = t + time_to_rider
@@ -113,17 +120,17 @@ while t < T:
         # generate new rider to online queue
         current_rider_id += 1
         ride_requested = md.add_to_list((current_rider_id, t + md.generate_random('exp',30), md.generate_location(), md.generate_location()), ride_requested)
-        rider_waiting_time.append(t)
     if len(rider_offline) > 0:
         if rider_offline[0][1] == t:
             try:
                 del riders_waiting[rider_offline[0][0]]
                 abandonments += 1
+                ride_info.append([rider_offline[0][0],-1,(-1,-1),(-1,-1),-1])
             # not in waiting dictionary -- already got picked up
             except:
                 pass
+            rider_waiting_time[rider_offline[0][0] - 1] = t - rider_waiting_time[rider_offline[0][0] - 1]
             rider_offline.pop(0)
-            rider_waiting_time[rider_offline[0][0]] = t - rider_waiting_time[rider_offline[0][0]]
     if len(ride_complete) > 0:
         if ride_complete[0][1] == t:
             # calculate profits of driver (revenue - fuel)
@@ -133,7 +140,9 @@ while t < T:
                 rider = md.find_closest_available(ride_complete[0][3], riders_waiting)
                 if rider:
                     number_of_pickups[ride_complete[0][4] - 1] += 1
-                    earnings[ride_complete[0][4] - 1] -= md.calculate_petrol(ride_complete[0][3], riders_waiting[rider][0])
+                    potential_profit = md.calculate_trip(riders_waiting[rider][0], riders_waiting[rider][1]) - md.calculate_petrol(ride_complete[0][3], riders_waiting[rider][0])
+                    earnings[ride_complete[0][4] - 1] += potential_profit
+                    # earnings[ride_complete[0][4] - 1] -= md.calculate_petrol(ride_complete[0][3], riders_waiting[rider][0])
                     # generate time taken to travel to rider
                     time_to_rider = md.generate_trip_time(ride_complete[0][3], riders_waiting[rider][0])
                     ride_start = t + time_to_rider
@@ -153,4 +162,4 @@ while t < T:
                 # record statistics
                 pass
             # remove rider from system
-            ride_complete.pop(0)
+            ride_info.append(ride_complete.pop(0))
