@@ -27,14 +27,13 @@ driver_offline = [] # (id,time)
 current_rider_id = 1
 # time when riders request a ride
 ride_requested = [(current_rider_id, md.generate_random('exp',30), md.generate_location(), md.generate_location())] # (id,time,origin, destination)
-#rider_waiting_time.append(0)
 # time when riders run out of patience and cancel a ride
 rider_offline = [] # (id,time)
 riders_waiting = {} # id:(location, destination)
 # matched rides
 ride_complete = [] # (id, end time, origin, destination, driver)
 ride_info = []
-T = 10 # Set termination time (by the minute)
+T = 10 # Set termination time
 t = 0 # Current time (minute 0)
 
 while t < T:
