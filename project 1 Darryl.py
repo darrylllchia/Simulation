@@ -34,7 +34,7 @@ riders_waiting = {} # id:(location, destination)
 ride_complete = [] # (id, end time, origin, destination, driver)
 ride_info = []
 T = 10 # Set termination time
-t = 0 # Current time (minute 0)
+t = 0 # Current time
 
 while t < T:
     if len(driver_offline) > 0:
